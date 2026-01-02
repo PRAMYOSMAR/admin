@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PRAMYOSMAR ADMIN - PDF Control</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --prm: #00695C; --bg: #F8F9FA; --red: #d63031; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; margin: 0; background: var(--bg); padding-bottom: 110px; }
+
+        .admin-header { background: white; padding: 25px 20px; border-radius: 0 0 30px 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); text-align: center; }
+        .admin-header h1 { font-size: 18px; margin: 0; color: var(--prm); font-weight: 800; }
+
+        .container { padding: 20px; max-width: 600px; margin: auto; }
+        .sect { display: none; animation: fadeIn 0.4s ease; }
+        .sect.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .card { background: white; padding: 20px; border-radius: 25px; box-shadow: 0 8px 25px rgba(0,0,0,0.04); margin-bottom: 20px; border: 1px solid #eee; }
+        .card h2 { font-size: 15px; margin: 0 0 15px; color: var(--prm); border-left: 4px solid var(--prm); padding-left: 10px; font-weight: 800; }
+
+        input, textarea { width: 100%; margin-bottom: 12px; padding: 14px; border-radius: 15px; border: 1.5px solid #eee; outline: none; font-family: inherit; font-size: 14px; background: #fafafa; }
+        button { width: 100%; padding: 15px; background: var(--prm); color: white; border: none; border-radius: 15px; font-weight: 800; cursor: pointer; transition: 0.3s; }
+        button:disabled { background: #ccc; }
+        
+        .item-list { margin-top: 15px; }
+        .data-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; background: #fff; border: 1px solid #f0f0f0; border-radius: 18px; margin-bottom: 8px; }
+        .btn-del { background: #fee2e2; color: var(--red); padding: 6px 12px; border: none; border-radius: 8px; font-size: 11px; font-weight: 700; }
+
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; height: 85px; display: flex; justify-content: space-around; align-items: center; box-shadow: 0 -10px 30px rgba(0,0,0,0.08); border-radius: 30px 30px 0 0; z-index: 1000; }
+        .nav-item { text-align: center; color: #B2BEC3; cursor: pointer; flex: 1; }
+        .nav-item.active { color: var(--prm); }
+        .nav-item i { font-size: 20px; display: block; margin-bottom: 5px; }
+        .nav-item span { font-size: 9px; font-weight: 800; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+
+    <div class="admin-header"><h1>Admin PRAMYOSMAR</h1></div>
+
+    <div class="container">
+        <div id="sectMat" class="sect active">
+            <div class="card">
+                <h2>Upload File Materi (PDF)</h2>
+                <input id="matJud" placeholder="Judul Materi">
+                <input type="file" id="matFile" accept="application/pdf" style="padding: 10px;">
+                <p style="font-size: 10px; color: #999; margin: -5px 0 10px 5px;">*Hanya menerima file format PDF</p>
+                <button id="btnMat" onclick="uploadPDF()">UPLOAD PDF SEKARANG</button>
+            </div>
+            <div id="listMateri" class="item-list"></div>
+        </div>
+
+        <div id="sectKeg" class="sect">
+            <div class="card">
+                <h2>Upload Kegiatan</h2>
+                <input id="kegJud" placeholder="Judul Kegiatan">
+                <textarea id="kegDes" placeholder="Deskripsi Singkat" rows="3"></textarea>
+                <input type="file" id="kegFile" accept="image/*">
+                <button onclick="uploadImg('kegiatan')">SIMPAN KEGIATAN</button>
+            </div>
+            <div id="listKegiatan"></div>
+        </div>
+
+        <div id="sectAng" class="sect">
+            <div class="card">
+                <h2>Data Anggota</h2>
+                <input id="angNama" placeholder="Nama Lengkap">
+                <input id="angJab" placeholder="Jabatan">
+                <input type="file" id="angFile" accept="image/*">
+                <button onclick="uploadImg('anggota')">SIMPAN ANGGOTA</button>
+            </div>
+            <div id="listAnggota"></div>
+        </div>
+
+        <div id="sectUj" class="sect">
+            <div class="card">
+                <h2>Setting Ujian</h2>
+                <input id="ujNama" placeholder="Nama Ujian">
+                <input id="ujLink" placeholder="Link G-Form">
+                <input id="ujFol" placeholder="Folder Nilai">
+                <button onclick="uploadUjian()">AKTIFKAN</button>
+            </div>
+            <div class="card">
+                <h2>Cek Nilai</h2>
+                <input id="cekFol" placeholder="Nama Folder">
+                <button onclick="fetchNilai()">TAMPILKAN</button>
+                <div id="listNilai"></div>
+            </div>
+        </div>
+    </div>
+
+    <nav class="bottom-nav">
+        <div class="nav-item active" onclick="switchPage('sectMat', this)"><i class="fa-solid fa-book"></i><span>Materi</span></div>
+        <div class="nav-item" onclick="switchPage('sectKeg', this)"><i class="fa-solid fa-camera"></i><span>Kegiatan</span></div>
+        <div class="nav-item" onclick="switchPage('sectAng', this)"><i class="fa-solid fa-user-group"></i><span>Anggota</span></div>
+        <div class="nav-item" onclick="switchPage('sectUj', this)"><i class="fa-solid fa-file-pen"></i><span>Ujian</span></div>
+    </nav>
+
+    <script>
+        const SUPABASE_URL = 'https://nuzxkanvloxcgxzcixoc.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im51enhrYW52bG94Y2d4emNpeG9jIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NzEwMjg0MCwiZXhwIjoyMDgyNjc4ODQwfQ.n9FGB2gxZun3mDw22ulit19jKtI95i9dqwH21175PZE';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        function switchPage(id, el) {
+            document.querySelectorAll('.sect').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            el.classList.add('active');
+            refreshLists();
+        }
+
+        async function uploadPDF() {
+            const file = matFile.files[0];
+            const jud = matJud.value;
+            const btn = document.getElementById('btnMat');
+            if(!file || !jud) return alert("Isi judul dan pilih file PDF!");
+            
+            btn.disabled = true; btn.innerText = "MENGIRIM PDF...";
+            
+            const path = "materi/" + Date.now() + "_" + file.name;
+            await _supabase.storage.from('file-materi').upload(path, file);
+            const { data } = _supabase.storage.from('file-materi').getPublicUrl(path);
+
+            await _supabase.from('materi').insert([{ judul_materi: jud, link_materi: data.publicUrl }]);
+            
+            alert("Materi PDF Berhasil Terupload!");
+            btn.disabled = false; btn.innerText = "UPLOAD PDF SEKARANG";
+            matJud.value = ""; matFile.value = "";
+            refreshLists();
+        }
+
+        async function uploadImg(table) {
+            const isA = table === 'anggota';
+            const file = isA ? angFile.files[0] : kegFile.files[0];
+            if(!file) return alert("Pilih foto!");
+            const path = Date.now() + "_" + file.name;
+            const bucket = isA ? 'foto-anggota' : 'foto-kegiatan';
+            await _supabase.storage.from(bucket).upload(path, file);
+            const { data } = _supabase.storage.from(bucket).getPublicUrl(path);
+            const payload = isA ? 
+                { nama: angNama.value, jabatan: angJab.value, foto_url: data.publicUrl } :
+                { judul_kegiatan: kegJud.value, deskripsi: kegDes.value, foto_url: data.publicUrl };
+            await _supabase.from(table).insert([payload]);
+            alert("Berhasil!"); refreshLists();
+        }
+
+        async function uploadUjian() {
+            await _supabase.from('ujian').insert([{ nama_ujian: ujNama.value, link_ujian: ujLink.value, deskripsi_ujian: ujFol.value }]);
+            alert("Ujian Aktif!"); refreshLists();
+        }
+
+        async function refreshLists() {
+            const { data: m } = await _supabase.from('materi').select('*');
+            document.getElementById('listMateri').innerHTML = m ? m.map(i => `<div class="data-item"><span>${i.judul_materi}</span><button class="btn-del" onclick="hapus('${i.id}', 'materi')">Hapus</button></div>`).join('') : '';
+            
+            const { data: k } = await _supabase.from('kegiatan').select('*');
+            document.getElementById('listKegiatan').innerHTML = k ? k.map(i => `<div class="data-item"><span>${i.judul_kegiatan}</span><button class="btn-del" onclick="hapus('${i.id}', 'kegiatan')">Hapus</button></div>`).join('') : '';
+            
+            const { data: a } = await _supabase.from('anggota').select('*');
+            document.getElementById('listAnggota').innerHTML = a ? a.map(i => `<div class="data-item"><span>${i.nama}</span><button class="btn-del" onclick="hapus('${i.id}', 'anggota')">Hapus</button></div>`).join('') : '';
+        }
+
+        async function hapus(id, table) {
+            if(confirm("Hapus data ini?")) {
+                await _supabase.from(table).delete().eq('id', id);
+                refreshLists();
+            }
+        }
+
+        async function fetchNilai() {
+            const f = document.getElementById('cekFol').value;
+            const { data } = await _supabase.from('rekap_nilai').select('*').eq('folder_ujian', f);
+            document.getElementById('listNilai').innerHTML = data ? data.map(n => `<div class="data-item"><b>${n.nama_siswa}</b> <span>${n.skor}</span></div>`).join('') : 'Data tidak ditemukan';
+        }
+
+        window.onload = refreshLists;
+    </script>
+</body>
+</html>
